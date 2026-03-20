@@ -29,6 +29,52 @@ __fzf_jj_cat() {
   fi
 }
 
+if [[ $1 == --list ]]; then
+  shift
+  set -e
+  type=$1
+  value=$2
+
+  if [[ $type == remote ]]; then
+    remote_url=$(jj git remote list 2>/dev/null | awk -v r="$value" '$1 == r {print $2}')
+  else
+    remote_url=$(jj git remote list 2>/dev/null | awk 'NR==1 {print $2}')
+  fi
+
+  if [[ $remote_url =~ ^git@ ]]; then
+    url=${remote_url%.git}
+    url=${url#git@}
+    url=https://${url/://}
+  elif [[ $remote_url =~ ^http ]]; then
+    url=${remote_url%.git}
+  fi
+
+  case "$type" in
+    commit)
+      hash=$(jj log -r "$value" --no-graph -T 'commit_id.short(7) ++ "\n"' 2>/dev/null | head -n 1)
+      path=/commit/$hash
+      ;;
+    branch) path=/tree/$value ;;
+    tag)    path=/releases/tag/$value ;;
+    remote) path= ;;
+    *)      exit 1 ;;
+  esac
+
+  case "$OSTYPE" in
+    darwin*)  open "$url$path" ;;
+    msys)     start "$url$path" ;;
+    linux*)
+      if uname -a | grep -i -q Microsoft && command -v powershell.exe; then
+        powershell.exe -NoProfile start "$url$path"
+      else
+        xdg-open "$url$path"
+      fi
+      ;;
+    *) xdg-open "$url$path" ;;
+  esac
+  exit 0
+fi
+
 if [[ $- =~ i ]] || [[ $1 = --run ]]; then # ----------------------------------
 
 if [[ $__fzf_jj_fzf ]]; then
@@ -88,33 +134,41 @@ _fzf_jj_help() {
 
 _fzf_jj_log() {
   _fzf_jj_check || return
+  local color pager
+  color=$(__fzf_jj_color)
+  pager="${PAGER:-less -R}"
 
   jj log --no-graph --color=never \
     -T 'change_id.short(8) ++ " " ++ if(description, description.first_line(), "(no description)") ++ "\n"' \
     2>/dev/null | \
     _fzf_jj_fzf \
       --border-label '📜 Log ' \
-      --header 'ENTER to insert change ID' \
-      --preview "
-        change=\"\$(echo {} | awk '{print \$1}')\"
-        jj show --color=$(__fzf_jj_color) \"\$change\" 2>/dev/null
-      " "$@" | \
+      --header $'CTRL-O (open in browser) \u2571 CTRL-D (diff) \u2571 ALT-E (describe) \u2571 ALT-F (files)' \
+      --bind "ctrl-o:execute-silent:bash \"$__fzf_jj\" --list commit {1}" \
+      --bind "ctrl-d:execute:jj diff --color=$color -r {1} | $pager" \
+      --bind "alt-e:execute:jj describe -r {1}" \
+      --bind "alt-f:become:bash \"$__fzf_jj\" --run files --revision {1}" \
+      --preview "jj show --color=$color {1} 2>/dev/null" \
+      "$@" | \
     awk '{print $1}'
 }
 
 _fzf_jj_ops() {
   _fzf_jj_check || return
+  local op_list
+  op_list='jj op restore {1} 2>/dev/null; jj op log --no-graph --color=never -T '"'"'id.short(8) ++ " " ++ description ++ "\n"'"'"' 2>/dev/null'
+  local color
+  color=$(__fzf_jj_color)
 
   jj op log --no-graph --color=never \
     -T 'id.short(8) ++ " " ++ description ++ "\n"' \
     2>/dev/null | \
     _fzf_jj_fzf \
       --border-label '⚙ Operations ' \
-      --header 'ENTER to insert operation ID' \
-      --preview "
-        op=\"\$(echo {} | awk '{print \$1}')\"
-        jj op show --color=$(__fzf_jj_color) \"\$op\" 2>/dev/null
-      " "$@" | \
+      --header $'CTRL-X (restore to operation) \u2571 ENTER to insert operation ID' \
+      --bind "ctrl-x:reload($op_list)" \
+      --preview "jj op show --color=$color {1} 2>/dev/null" \
+      "$@" | \
     awk '{print $1}'
 }
 
@@ -124,7 +178,8 @@ _fzf_jj_remotes() {
   jj git remote list 2>/dev/null | \
     _fzf_jj_fzf \
       --border-label '🌐 Remotes ' \
-      --header 'ENTER to insert remote name' \
+      --header $'CTRL-O (open in browser) \u2571 ENTER to insert remote name' \
+      --bind "ctrl-o:execute-silent:bash \"$__fzf_jj\" --list remote {1}" \
       --preview "
         remote=\"\$(echo {} | awk '{print \$1}')\"
         jj bookmark list --all --color=$(__fzf_jj_color) 2>/dev/null | grep \"@\${remote}\"
@@ -134,54 +189,73 @@ _fzf_jj_remotes() {
 
 _fzf_jj_bookmarks() {
   _fzf_jj_check || return
+  local color
+  color=$(__fzf_jj_color)
 
-  jj bookmark list --color=$(__fzf_jj_color) 2>/dev/null | \
+  jj bookmark list --color=$color 2>/dev/null | \
     grep -v '^\s' | \
     _fzf_jj_fzf \
       --border-label '🔖 Bookmarks ' \
-      --header 'ENTER to insert bookmark name' \
+      --header $'CTRL-O (open in browser) \u2571 CTRL-X (delete bookmark) \u2571 ENTER to insert bookmark name' \
       --ansi \
+      --bind "ctrl-o:execute-silent:bash \"$__fzf_jj\" --list branch \$(echo {1} | cut -d: -f1)" \
+      --bind "ctrl-x:reload(jj bookmark delete \$(echo {1} | cut -d: -f1) 2>/dev/null; jj bookmark list --color=$color 2>/dev/null | grep -v '^[[:space:]]')" \
       --preview "
         bookmark=\"\$(echo {} | cut -d: -f1)\"
-        jj log --color=$(__fzf_jj_color) -r \"\$bookmark\" 2>/dev/null
+        jj log --color=$color -r \"\$bookmark\" 2>/dev/null
       " "$@" | \
     cut -d: -f1
 }
 
 _fzf_jj_tags() {
   _fzf_jj_check || return
+  local color
+  color=$(__fzf_jj_color)
 
-  jj tag list --color=$(__fzf_jj_color) 2>/dev/null | \
+  jj tag list --color=$color 2>/dev/null | \
     _fzf_jj_fzf \
       --border-label '🏷 Tags ' \
-      --header 'ENTER to insert tag name' \
+      --header $'CTRL-O (open in browser) \u2571 ENTER to insert tag name' \
       --ansi \
+      --bind "ctrl-o:execute-silent:bash \"$__fzf_jj\" --list tag \$(echo {} | cut -d: -f1)" \
       --preview "
         tag=\"\$(echo {} | cut -d: -f1)\"
-        jj log --color=$(__fzf_jj_color) -r \"\$tag\" 2>/dev/null
+        jj log --color=$color -r \"\$tag\" 2>/dev/null
       " "$@" | \
     cut -d: -f1
 }
 
 _fzf_jj_workspaces() {
   _fzf_jj_check || return
+  local color
+  color=$(__fzf_jj_color)
 
-  jj workspace list --color=$(__fzf_jj_color) 2>/dev/null | \
+  jj workspace list --color=$color 2>/dev/null | \
     _fzf_jj_fzf \
       --border-label '🗂 Workspaces ' \
-      --header 'ENTER to insert workspace name' \
+      --header $'CTRL-X (forget workspace) \u2571 ENTER to insert workspace name' \
       --ansi \
+      --bind "ctrl-x:reload(jj workspace forget \$(echo {} | cut -d: -f1) 2>/dev/null; jj workspace list --color=$color 2>/dev/null)" \
       --preview "
         workspace=\"\$(echo {} | cut -d: -f1)\"
-        jj log --color=$(__fzf_jj_color) -r \"\${workspace}@\" 2>/dev/null
+        jj log --color=$color -r \"\${workspace}@\" 2>/dev/null
       " "$@" | \
     cut -d: -f1
 }
 
 _fzf_jj_files() {
   _fzf_jj_check || return
-  local root
+  local root revision
   root=$(jj root 2>/dev/null)
+
+  # Parse optional --revision flag
+  if [[ ${1:-} == --revision ]] || [[ ${1:-} == -r ]]; then
+    revision=$2
+    shift 2
+  fi
+
+  local rev_flag=""
+  [[ -n $revision ]] && rev_flag="-r $revision"
 
   # All lines use a consistent 3-char prefix so `cut -c4-` extracts the path:
   #   Changed files:   "{status}  path"  e.g. "M  src/foo.rs"
@@ -190,11 +264,14 @@ _fzf_jj_files() {
   # `jj diff --summary` format: "{M|A|D} path"
   # awk pads the status char to 3 chars: "M  " then appends the path (from col 3)
   (
-    jj diff --summary --color=never 2>/dev/null | \
+    # shellcheck disable=SC2086
+    jj diff --summary --color=never $rev_flag 2>/dev/null | \
       awk '{printf "%-3s%s\n", substr($0,1,1), substr($0,3)}'
-    jj file list 2>/dev/null | \
+    # shellcheck disable=SC2086
+    jj file list $rev_flag 2>/dev/null | \
       grep -vxFf <(
-        jj diff --name-only --color=never 2>/dev/null
+        # shellcheck disable=SC2086
+        jj diff --name-only --color=never $rev_flag 2>/dev/null
         echo :
       ) | sed 's/^/   /'
   ) | \
@@ -204,7 +281,7 @@ _fzf_jj_files() {
       --bind "alt-e:execute:${EDITOR:-vim} \"\$(echo {} | cut -c4-)\"" \
       --preview "
         filepath=\"\$(echo {} | cut -c4-)\"
-        diff_out=\"\$(cd \"\$root\" && jj diff --color=$(__fzf_jj_color) -- \"\$filepath\" 2>/dev/null)\"
+        diff_out=\"\$(cd \"\$root\" && jj diff --color=$(__fzf_jj_color) $rev_flag -- \"\$filepath\" 2>/dev/null)\"
         if [ -n \"\$diff_out\" ]; then
           echo \"\$diff_out\"
           echo '────'
@@ -217,7 +294,7 @@ _fzf_jj_files() {
 [[ $1 == --run ]] && shift
 case "$1" in
   bookmarks)  _fzf_jj_bookmarks ;;
-  files)      _fzf_jj_files ;;
+  files)      _fzf_jj_files "${@:2}" ;;
   help)       _fzf_jj_help ;;
   log)        _fzf_jj_log ;;
   ops)        _fzf_jj_ops ;;
