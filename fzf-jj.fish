@@ -7,7 +7,6 @@ function __fzf_jj_sh
     commandline -f repaint
 end
 
-# Ctrl-j Ctrl-f: jj file picker
 # Note: Ctrl-j (^J, 0x0A) is also newline/LF. Fish treats chord prefixes with
 # a short timeout before falling back to the single-key binding, so regular
 # Enter (which sends ^M/CR, not ^J) is unaffected. Rapid ^J presses may have
