@@ -3,6 +3,7 @@
 A faithful reimplementation of junegunn's [fzf-git.sh](https://github.com/junegunn/fzf-git.sh) to operate on [jj](https://github.com/jj-vcs/jj) (jujutsu) objects using [fzf](https://github.com/junegunn/fzf).
 
 > ![WARNING]
+>
 > This was largely vibe-coded with Claude Code (though I did look over the code as a spotcheck). It works well in practice for my personal use, but do NOT assume it is production-grade software!
 
 ## Installation
