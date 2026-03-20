@@ -143,7 +143,7 @@ _fzf_jj_log() {
     2>/dev/null | \
     _fzf_jj_fzf \
       --border-label '📜 Log ' \
-      --header $'CTRL-O (open in browser) \u2571 CTRL-D (diff) \u2571 ALT-E (describe) \u2571 ALT-F (files)' \
+      --header 'CTRL-O (open in browser) ╱ CTRL-D (diff) ╱ ALT-E (describe) ╱ ALT-F (files)' \
       --bind "ctrl-o:execute-silent:bash \"$__fzf_jj\" --list commit {1}" \
       --bind "ctrl-d:execute:jj diff --color=$color -r {1} | $pager" \
       --bind "alt-e:execute:jj describe -r {1}" \
@@ -165,7 +165,7 @@ _fzf_jj_ops() {
     2>/dev/null | \
     _fzf_jj_fzf \
       --border-label '⚙ Operations ' \
-      --header $'CTRL-X (restore to operation) \u2571 ENTER to insert operation ID' \
+      --header 'CTRL-X (restore to operation) ╱ ENTER to insert operation ID' \
       --bind "ctrl-x:reload($op_list)" \
       --preview "jj op show --color=$color {1} 2>/dev/null" \
       "$@" | \
@@ -178,7 +178,7 @@ _fzf_jj_remotes() {
   jj git remote list 2>/dev/null | \
     _fzf_jj_fzf \
       --border-label '🌐 Remotes ' \
-      --header $'CTRL-O (open in browser) \u2571 ENTER to insert remote name' \
+      --header 'CTRL-O (open in browser) ╱ ENTER to insert remote name' \
       --bind "ctrl-o:execute-silent:bash \"$__fzf_jj\" --list remote {1}" \
       --preview "
         remote=\"\$(echo {} | awk '{print \$1}')\"
@@ -196,7 +196,7 @@ _fzf_jj_bookmarks() {
     grep -v '^\s' | \
     _fzf_jj_fzf \
       --border-label '🔖 Bookmarks ' \
-      --header $'CTRL-O (open in browser) \u2571 CTRL-X (delete bookmark) \u2571 ENTER to insert bookmark name' \
+      --header 'CTRL-O (open in browser) ╱ CTRL-X (delete bookmark) ╱ ENTER to insert bookmark name' \
       --ansi \
       --bind "ctrl-o:execute-silent:bash \"$__fzf_jj\" --list branch \$(echo {1} | cut -d: -f1)" \
       --bind "ctrl-x:reload(jj bookmark delete \$(echo {1} | cut -d: -f1) 2>/dev/null; jj bookmark list --color=$color 2>/dev/null | grep -v '^[[:space:]]')" \
@@ -215,7 +215,7 @@ _fzf_jj_tags() {
   jj tag list --color=$color 2>/dev/null | \
     _fzf_jj_fzf \
       --border-label '🏷 Tags ' \
-      --header $'CTRL-O (open in browser) \u2571 ENTER to insert tag name' \
+      --header 'CTRL-O (open in browser) ╱ ENTER to insert tag name' \
       --ansi \
       --bind "ctrl-o:execute-silent:bash \"$__fzf_jj\" --list tag \$(echo {} | cut -d: -f1)" \
       --preview "
@@ -233,7 +233,7 @@ _fzf_jj_workspaces() {
   jj workspace list --color=$color 2>/dev/null | \
     _fzf_jj_fzf \
       --border-label '🗂 Workspaces ' \
-      --header $'CTRL-X (forget workspace) \u2571 ENTER to insert workspace name' \
+      --header 'CTRL-X (forget workspace) ╱ ENTER to insert workspace name' \
       --ansi \
       --bind "ctrl-x:reload(jj workspace forget \$(echo {} | cut -d: -f1) 2>/dev/null; jj workspace list --color=$color 2>/dev/null)" \
       --preview "
@@ -281,12 +281,12 @@ _fzf_jj_files() {
       --bind "alt-e:execute:${EDITOR:-vim} \"\$(echo {} | cut -c4-)\"" \
       --preview "
         filepath=\"\$(echo {} | cut -c4-)\"
-        diff_out=\"\$(cd \"\$root\" && jj diff --color=$(__fzf_jj_color) $rev_flag -- \"\$filepath\" 2>/dev/null)\"
+        diff_out=\"\$(cd \"$root\" && jj diff --color=$(__fzf_jj_color) $rev_flag -- \"\$filepath\" 2>/dev/null)\"
         if [ -n \"\$diff_out\" ]; then
           echo \"\$diff_out\"
           echo '────'
         fi
-        $(__fzf_jj_cat) \"\$root/\$filepath\" 2>/dev/null
+        $(__fzf_jj_cat) \"$root/\$filepath\" 2>/dev/null
       " "$@" | \
     cut -c4-
 }
