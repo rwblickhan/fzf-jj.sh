@@ -262,16 +262,26 @@ _fzf_jj_files() {
   #   Unchanged files: "   path"         e.g. "   src/bar.rs"
   #
   # `jj diff --summary` format: "{M|A|D} path"
-  # awk pads the status char to 3 chars: "M  " then appends the path (from col 3)
+  # Changed files are ordered: modified (M) first, then added (A), then deleted (D).
+  local diff_summary
+  # shellcheck disable=SC2086
+  diff_summary=$(jj diff --summary --color=never $rev_flag 2>/dev/null)
   (
-    # shellcheck disable=SC2086
-    jj diff --summary --color=never $rev_flag 2>/dev/null | \
-      awk '{printf "%-3s%s\n", substr($0,1,1), substr($0,3)}'
+    printf '%s\n' "$diff_summary" | awk '
+      { status=substr($0,1,1); path=substr($0,3) }
+      status=="M" { m[++mc]=path }
+      status=="A" { a[++ac]=path }
+      status=="D" { d[++dc]=path }
+      END {
+        for (i=1; i<=mc; i++) printf "M  %s\n", m[i]
+        for (i=1; i<=ac; i++) printf "A  %s\n", a[i]
+        for (i=1; i<=dc; i++) printf "D  %s\n", d[i]
+      }
+    '
     # shellcheck disable=SC2086
     jj file list $rev_flag 2>/dev/null | \
       grep -vxFf <(
-        # shellcheck disable=SC2086
-        jj diff --name-only --color=never $rev_flag 2>/dev/null
+        printf '%s\n' "$diff_summary" | awk '{print substr($0,3)}'
         echo :
       ) | sed 's/^/   /'
   ) | \
