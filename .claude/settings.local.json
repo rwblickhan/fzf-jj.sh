@@ -3,7 +3,9 @@
     "allow": [
       "Bash(jj workspace:*)",
       "Bash(jj log:*)",
-      "Bash(jj diff:*)"
+      "Bash(jj diff:*)",
+      "Bash(git -C ~/utils/fzf-jj.sh remote -v)",
+      "Bash(git -C ~/Developer/fzf-jj.sh remote -v)"
     ]
   }
 }

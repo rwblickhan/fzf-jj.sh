@@ -35,7 +35,10 @@ A faithful reimplementation of junegunn's [fzf-git.sh](https://github.com/junegu
 > As with the original fzf-git.sh, you may have the following issues:
 >
 > - If you use tmux, <kbd>CTRL-B</kbd> will conflict with the default tmux prefix.
+
 > - zsh's `KEYTIMEOUT` needs to be high enough for you to hit two keys in a row.
+>
+> As with fzf-git.sh, you can instead use <kbd>CTRL-J</kbd><kbd>{KEY}</kbd> instead of <kbd>CTRL-J</kbd><kbd>CTRL-{KEY}</kbd>, particularly for the tmux conflict.
 
 ### Inside fzf
 

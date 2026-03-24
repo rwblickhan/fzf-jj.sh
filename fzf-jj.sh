@@ -304,3 +304,47 @@ case "$1" in
 esac
 
 fi # -------------------------------------------------------------------------
+
+if [[ $- =~ i ]]; then # ------------------------------------------------------
+if [[ -n "${BASH_VERSION:-}" ]]; then
+  __fzf_jj_init() {
+    bind -m emacs-standard '"\er":  redraw-current-line'
+    bind -m emacs-standard '"\C-z": vi-editing-mode'
+    bind -m vi-command     '"\C-z": emacs-editing-mode'
+    bind -m vi-insert      '"\C-z": emacs-editing-mode'
+
+    local o c
+    for o in "$@"; do
+      c=${o:0:1}
+      bind -m emacs-standard '"\C-j\C-'$c'": " \C-u \C-a\C-k`_fzf_jj_'$o'`\e\C-e\C-y\C-a\C-y\ey\C-h\C-e\er \C-h"'
+      bind -m vi-command     '"\C-j\C-'$c'": "\C-z\C-j\C-'$c'\C-z"'
+      bind -m vi-insert      '"\C-j\C-'$c'": "\C-z\C-j\C-'$c'\C-z"'
+      bind -m emacs-standard '"\C-j'$c'":    " \C-u \C-a\C-k`_fzf_jj_'$o'`\e\C-e\C-y\C-a\C-y\ey\C-h\C-e\er \C-h"'
+      bind -m vi-command     '"\C-j'$c'":    "\C-z\C-j'$c'\C-z"'
+      bind -m vi-insert      '"\C-j'$c'":    "\C-z\C-j'$c'\C-z"'
+    done
+  }
+elif [[ -n "${ZSH_VERSION:-}" ]]; then
+  __fzf_jj_join() {
+    local item
+    while read -r item; do
+      echo -n -E "${(q)${(Q)item}} "
+    done
+  }
+
+  __fzf_jj_init() {
+    setopt localoptions no_glob
+    local m o
+    for o in "$@"; do
+      eval "fzf-jj-$o-widget() { local result=\$(_fzf_jj_$o | __fzf_jj_join); zle reset-prompt; LBUFFER+=\$result }"
+      eval "zle -N fzf-jj-$o-widget"
+      for m in emacs vicmd viins; do
+        eval "bindkey -M $m '^j^${o[1]}' fzf-jj-$o-widget"
+        eval "bindkey -M $m '^j${o[1]}' fzf-jj-$o-widget"
+      done
+    done
+  }
+fi
+__fzf_jj_init bookmarks files help log ops remotes tags workspaces
+
+fi # --------------------------------------------------------------------------

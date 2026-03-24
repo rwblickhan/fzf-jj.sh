@@ -11,19 +11,17 @@ end
 # a short timeout before falling back to the single-key binding, so regular
 # Enter (which sends ^M/CR, not ^J) is unaffected. Rapid ^J presses may have
 # a brief delay. If this causes issues, rebind to a different chord prefix.
-bind -M default \cj\ch '__fzf_jj_sh help'
-bind -M insert  \cj\ch '__fzf_jj_sh help'
-bind -M default \cj\cb '__fzf_jj_sh bookmarks'
-bind -M insert  \cj\cb '__fzf_jj_sh bookmarks'
-bind -M default \cj\cl '__fzf_jj_sh log'
-bind -M insert  \cj\cl '__fzf_jj_sh log'
-bind -M default \cj\co '__fzf_jj_sh ops'
-bind -M insert  \cj\co '__fzf_jj_sh ops'
-bind -M default \cj\cr '__fzf_jj_sh remotes'
-bind -M insert  \cj\cr '__fzf_jj_sh remotes'
-bind -M default \cj\cf '__fzf_jj_sh files'
-bind -M insert  \cj\cf '__fzf_jj_sh files'
-bind -M default \cj\ct '__fzf_jj_sh tags'
-bind -M insert  \cj\ct '__fzf_jj_sh tags'
-bind -M default \cj\cw '__fzf_jj_sh workspaces'
-bind -M insert  \cj\cw '__fzf_jj_sh workspaces'
+#
+# Each command is bound to both ctrl-j ctrl-{key} and ctrl-j {key} (lowercase).
+# Use the lowercase variant as a workaround if ctrl-{key} conflicts with another
+# binding (e.g. ctrl-b for the tmux prefix).
+set --local commands help bookmarks log ops remotes files tags workspaces
+
+for command in $commands
+    set --function key (string sub --length=1 $command)
+
+    eval "bind -M default \cj$key   '__fzf_jj_sh $command'"
+    eval "bind -M insert  \cj$key   '__fzf_jj_sh $command'"
+    eval "bind -M default \cj\c$key '__fzf_jj_sh $command'"
+    eval "bind -M insert  \cj\c$key '__fzf_jj_sh $command'"
+end
