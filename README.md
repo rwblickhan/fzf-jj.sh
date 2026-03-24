@@ -35,7 +35,6 @@ A faithful reimplementation of junegunn's [fzf-git.sh](https://github.com/junegu
 > As with the original fzf-git.sh, you may have the following issues:
 >
 > - If you use tmux, <kbd>CTRL-B</kbd> will conflict with the default tmux prefix.
-> - By default, <kbd>CTRL-S</kbd> freezes the terminal if flow control is enabled; use `stty -ixon` to disable.
 > - zsh's `KEYTIMEOUT` needs to be high enough for you to hit two keys in a row.
 
 ### Inside fzf
