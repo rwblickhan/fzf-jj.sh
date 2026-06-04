@@ -257,6 +257,25 @@ _fzf_jj_files() {
   local rev_flag=""
   [[ -n $revision ]] && rev_flag="-r $revision"
 
+  # Find the effective revision: self if non-empty, otherwise nearest non-empty ancestor.
+  # Tries user-defined alias fzf_jj_files_rev(x) first (definable in jj config
+  # revset-aliases to customize behavior), then falls back to the inline revset.
+  local target_rev="${revision:-@}"
+  local effective_rev alias_out fallback_out
+  alias_out=$(jj log -r "fzf_jj_files_rev($target_rev)" --no-graph \
+    -T 'change_id.short(8) ++ "\n"' 2>/dev/null)
+  if [[ -n "$alias_out" ]]; then
+    effective_rev=$(printf '%s' "$alias_out" | head -n1 | tr -d '[:space:]')
+  else
+    fallback_out=$(jj log -r "latest(::$target_rev ~ empty())" \
+      --no-graph -T 'change_id.short(8) ++ "\n"' 2>/dev/null)
+    effective_rev=$(printf '%s' "$fallback_out" | head -n1 | tr -d '[:space:]')
+  fi
+  if [[ -n "$effective_rev" ]]; then
+    revision="$effective_rev"
+    rev_flag="-r $revision"
+  fi
+
   # All lines use a consistent 3-char prefix so `cut -c4-` extracts the path:
   #   Changed files:   "{status}  path"  e.g. "M  src/foo.rs"
   #   Unchanged files: "   path"         e.g. "   src/bar.rs"
