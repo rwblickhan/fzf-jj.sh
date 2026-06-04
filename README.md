@@ -31,11 +31,12 @@ A faithful reimplementation of junegunn's [fzf-git.sh](https://github.com/junegu
 - <kbd>CTRL-J</kbd><kbd>CTRL-T</kbd> for **T**ags
 - <kbd>CTRL-J</kbd><kbd>CTRL-W</kbd> for **W**orkspaces
 
+By default, the files binding will operate on the nearest non-empty ancestor, to support squash-based workflows; this can be customized with the `fzf_jj_files_rev` revset alias.
+
 > [!WARNING]
 > As with the original fzf-git.sh, you may have the following issues:
 >
 > - If you use tmux, <kbd>CTRL-B</kbd> will conflict with the default tmux prefix.
-
 > - zsh's `KEYTIMEOUT` needs to be high enough for you to hit two keys in a row.
 >
 > As with fzf-git.sh, you can instead use <kbd>CTRL-J</kbd><kbd>{KEY}</kbd> instead of <kbd>CTRL-J</kbd><kbd>CTRL-{KEY}</kbd>, particularly for the tmux conflict.
@@ -70,3 +71,9 @@ There's also an environment variable you can pass:
 | `BAT_STYLE` | Specifies the style for displaying files using `bat` | `full`  |
 
 Also, as with fzf-git.sh, every binding is backed by a `_fzf_jj_*` function that you can use directly in your shell config file.
+
+Finally, there's a revset alias you can override:
+
+| Alias              | Description                              | Default                 |
+| ------------------ | ---------------------------------------- | ----------------------- |
+| `fzf_jj_files_rev` | Which revision to pull file changes from | `latest(::@ ~ empty())` |
