@@ -74,6 +74,6 @@ Also, as with fzf-git.sh, every binding is backed by a `_fzf_jj_*` function that
 
 Finally, there's a revset alias you can override:
 
-| Alias              | Description                              | Default                 |
-| ------------------ | ---------------------------------------- | ----------------------- |
-| `fzf_jj_files_rev` | Which revision to pull file changes from | `latest(::@ ~ empty())` |
+| Alias              | Description                              | Default                |
+| ------------------ | ---------------------------------------- | ---------------------- |
+| `fzf_jj_files_rev` | Which revision to pull file changes from | `heads(::@ ~ empty())` |
