@@ -267,7 +267,7 @@ _fzf_jj_files() {
   if [[ -n "$alias_out" ]]; then
     effective_rev=$(printf '%s' "$alias_out" | head -n1 | tr -d '[:space:]')
   else
-    fallback_out=$(jj log -r "latest(::$target_rev ~ empty())" \
+    fallback_out=$(jj log -r "heads(::$target_rev ~ empty())" \
       --no-graph -T 'change_id.short(8) ++ "\n"' 2>/dev/null)
     effective_rev=$(printf '%s' "$fallback_out" | head -n1 | tr -d '[:space:]')
   fi
