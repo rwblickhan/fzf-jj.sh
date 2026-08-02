@@ -3,7 +3,8 @@ function __fzf_jj_sh
     # call fzf-jj.sh without needing it on $PATH.
     set --function fzf_jj_sh_path (realpath (status dirname))
 
-    commandline --insert (SHELL=bash bash "$fzf_jj_sh_path/fzf-jj.sh" --run $argv | string join ' ')
+    set --local result (SHELL=bash bash "$fzf_jj_sh_path/fzf-jj.sh" --run $argv)
+    commandline --insert (string escape -- $result | string join ' ')
     commandline -f repaint
 end
 

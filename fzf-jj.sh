@@ -99,6 +99,13 @@ _fzf_jj_check() {
   return 1
 }
 
+__fzf_jj_bash_quote() {
+  local line
+  while IFS= read -r line; do
+    printf '%q ' "$line"
+  done
+}
+
 __fzf_jj=${BASH_SOURCE[0]:-${(%):-%x}}
 __fzf_jj=$(readlink -f "$__fzf_jj" 2> /dev/null || /usr/bin/ruby --disable-gems -e 'puts File.expand_path(ARGV.first)' "$__fzf_jj" 2> /dev/null)
 
@@ -345,10 +352,10 @@ if [[ -n "${BASH_VERSION:-}" ]]; then
     local o c
     for o in "$@"; do
       c=${o:0:1}
-      bind -m emacs-standard '"\C-j\C-'$c'": " \C-u \C-a\C-k`_fzf_jj_'$o'`\e\C-e\C-y\C-a\C-y\ey\C-h\C-e\er \C-h"'
+      bind -m emacs-standard '"\C-j\C-'$c'": " \C-u \C-a\C-k`_fzf_jj_'$o' | __fzf_jj_bash_quote`\e\C-e\C-y\C-a\C-y\ey\C-h\C-e\er \C-h"'
       bind -m vi-command     '"\C-j\C-'$c'": "\C-z\C-j\C-'$c'\C-z"'
       bind -m vi-insert      '"\C-j\C-'$c'": "\C-z\C-j\C-'$c'\C-z"'
-      bind -m emacs-standard '"\C-j'$c'":    " \C-u \C-a\C-k`_fzf_jj_'$o'`\e\C-e\C-y\C-a\C-y\ey\C-h\C-e\er \C-h"'
+      bind -m emacs-standard '"\C-j'$c'":    " \C-u \C-a\C-k`_fzf_jj_'$o' | __fzf_jj_bash_quote`\e\C-e\C-y\C-a\C-y\ey\C-h\C-e\er \C-h"'
       bind -m vi-command     '"\C-j'$c'":    "\C-z\C-j'$c'\C-z"'
       bind -m vi-insert      '"\C-j'$c'":    "\C-z\C-j'$c'\C-z"'
     done
