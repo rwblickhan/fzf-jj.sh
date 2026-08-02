@@ -250,6 +250,62 @@ _fzf_jj_workspaces() {
     cut -d: -f1
 }
 
+# All lines use a consistent 3-char prefix so `cut -c4-` extracts the path:
+#   Changed files:   "{status}  path"  e.g. "M  src/foo.rs"
+#   Unchanged files: "   path"         e.g. "   src/bar.rs"
+#
+# `jj diff --summary` format: "{M|A|D} path"
+# Changed files are ordered: modified (M) first, then added (A), then deleted (D).
+__fzf_jj_files_list() {
+  local mode=$1 revision=$2
+  local rev_flag=""
+  [[ -n $revision ]] && rev_flag="-r $revision"
+
+  local diff_summary
+  # shellcheck disable=SC2086
+  diff_summary=$(jj diff --summary --color=never $rev_flag 2>/dev/null)
+  printf '%s\n' "$diff_summary" | awk '
+    { status=substr($0,1,1); path=substr($0,3) }
+    status=="M" { m[++mc]=path }
+    status=="A" { a[++ac]=path }
+    status=="D" { d[++dc]=path }
+    END {
+      for (i=1; i<=mc; i++) printf "M  %s\n", m[i]
+      for (i=1; i<=ac; i++) printf "A  %s\n", a[i]
+      for (i=1; i<=dc; i++) printf "D  %s\n", d[i]
+    }
+  '
+
+  if [[ $mode == all ]]; then
+    # shellcheck disable=SC2086
+    jj file list $rev_flag 2>/dev/null | \
+      grep -vxFf <(
+        printf '%s\n' "$diff_summary" | awk '{print substr($0,3)}'
+        echo :
+      ) | sed 's/^/   /'
+  fi
+}
+
+__fzf_jj_files_toggle() {
+  local state_file=$1 mode
+  mode=$(cat "$state_file" 2>/dev/null)
+  if [[ $mode == all ]]; then
+    echo changed > "$state_file"
+  else
+    echo all > "$state_file"
+  fi
+}
+
+__fzf_jj_files_header() {
+  local state_file=$1 mode
+  mode=$(cat "$state_file" 2>/dev/null)
+  if [[ $mode == all ]]; then
+    echo 'ALT-E (open in editor) ╱ ALT-M (show only changed files)'
+  else
+    echo 'ALT-E (open in editor) ╱ ALT-M (show all files)'
+  fi
+}
+
 _fzf_jj_files() {
   _fzf_jj_check || return
   local root revision
@@ -283,38 +339,19 @@ _fzf_jj_files() {
     rev_flag="-r $revision"
   fi
 
-  # All lines use a consistent 3-char prefix so `cut -c4-` extracts the path:
-  #   Changed files:   "{status}  path"  e.g. "M  src/foo.rs"
-  #   Unchanged files: "   path"         e.g. "   src/bar.rs"
-  #
-  # `jj diff --summary` format: "{M|A|D} path"
-  # Changed files are ordered: modified (M) first, then added (A), then deleted (D).
-  local diff_summary
-  # shellcheck disable=SC2086
-  diff_summary=$(jj diff --summary --color=never $rev_flag 2>/dev/null)
-  (
-    printf '%s\n' "$diff_summary" | awk '
-      { status=substr($0,1,1); path=substr($0,3) }
-      status=="M" { m[++mc]=path }
-      status=="A" { a[++ac]=path }
-      status=="D" { d[++dc]=path }
-      END {
-        for (i=1; i<=mc; i++) printf "M  %s\n", m[i]
-        for (i=1; i<=ac; i++) printf "A  %s\n", a[i]
-        for (i=1; i<=dc; i++) printf "D  %s\n", d[i]
-      }
-    '
-    # shellcheck disable=SC2086
-    jj file list $rev_flag 2>/dev/null | \
-      grep -vxFf <(
-        printf '%s\n' "$diff_summary" | awk '{print substr($0,3)}'
-        echo :
-      ) | sed 's/^/   /'
-  ) | \
+  # Tracks the current listing mode (changed|all) across ALT-M presses;
+  # defaults to "changed" and is cleaned up when the picker exits.
+  local state_file
+  state_file=$(mktemp "${TMPDIR:-/tmp}/fzf-jj-files.XXXXXX")
+  trap 'rm -f "$state_file"' RETURN
+  echo changed > "$state_file"
+
+  __fzf_jj_files_list changed "$revision" | \
     _fzf_jj_fzf -m \
       --border-label '📁 Files ' \
-      --header 'ALT-E (open in editor)' \
+      --header "$(__fzf_jj_files_header "$state_file")" \
       --bind "alt-e:execute:${EDITOR:-vim} \"\$(echo {} | cut -c4-)\"" \
+      --bind "alt-m:execute-silent(bash \"$__fzf_jj\" --run _files_toggle \"$state_file\")+reload(bash \"$__fzf_jj\" --run _files_list \$(cat \"$state_file\") \"$revision\")+transform-header(bash \"$__fzf_jj\" --run _files_header \"$state_file\")" \
       --preview "
         filepath=\"\$(echo {} | cut -c4-)\"
         diff_out=\"\$(cd \"$root\" && jj diff --color=$(__fzf_jj_color) $rev_flag -- \"\$filepath\" 2>/dev/null)\"
@@ -329,14 +366,17 @@ _fzf_jj_files() {
 
 [[ $1 == --run ]] && shift
 case "$1" in
-  bookmarks)  _fzf_jj_bookmarks ;;
-  files)      _fzf_jj_files "${@:2}" ;;
-  help)       _fzf_jj_help ;;
-  log)        _fzf_jj_log ;;
-  ops)        _fzf_jj_ops ;;
-  remotes)    _fzf_jj_remotes ;;
-  tags)       _fzf_jj_tags ;;
-  workspaces) _fzf_jj_workspaces ;;
+  bookmarks)     _fzf_jj_bookmarks ;;
+  files)         _fzf_jj_files "${@:2}" ;;
+  help)          _fzf_jj_help ;;
+  log)           _fzf_jj_log ;;
+  ops)           _fzf_jj_ops ;;
+  remotes)       _fzf_jj_remotes ;;
+  tags)          _fzf_jj_tags ;;
+  workspaces)    _fzf_jj_workspaces ;;
+  _files_list)   __fzf_jj_files_list "$2" "$3" ;;
+  _files_toggle) __fzf_jj_files_toggle "$2" ;;
+  _files_header) __fzf_jj_files_header "$2" ;;
 esac
 
 fi # -------------------------------------------------------------------------

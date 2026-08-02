@@ -33,6 +33,8 @@ A faithful reimplementation of junegunn's [fzf-git.sh](https://github.com/junegu
 
 By default, the files binding will operate on the nearest non-empty ancestor, to support squash-based workflows; this can be customized with the `fzf_jj_files_rev` revset alias.
 
+By default, the files picker only shows modified/added/deleted files; press <kbd>ALT-M</kbd> inside the picker to toggle showing all files instead.
+
 > [!WARNING]
 > As with the original fzf-git.sh, you may have the following issues:
 >
